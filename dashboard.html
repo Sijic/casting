@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Casting Hub 2.0 | GULYWOOD</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0a0a0c;
+            --card-bg: #15171e;
+            --accent: #f45925;
+            --text: #ffffff;
+            --muted: #8e8e93;
+            --border: rgba(255, 255, 255, 0.1);
+            --star: #ffcc00;
+            --approved-glow: rgba(255, 204, 0, 0.2);
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Space Grotesk', sans-serif;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Sidebar Filters */
+        .sidebar {
+            width: 300px;
+            background: var(--card-bg);
+            border-right: 1px solid var(--border);
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            overflow-y: auto;
+        }
+
+        .sidebar h2 { font-size: 18px; margin: 0 0 10px; color: var(--accent); text-transform: uppercase; letter-spacing: 1px; }
+        
+        .filter-group { display: flex; flex-direction: column; gap: 8px; }
+        .filter-group label { font-size: 11px; color: var(--muted); text-transform: uppercase; font-weight: 700; }
+        
+        input, select, textarea {
+            background: #000;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px;
+            color: #fff;
+            outline: none;
+            font-family: inherit;
+            font-size: 14px;
+        }
+        input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+
+        .range-inputs { display: flex; flex-direction: column; gap: 8px; }
+
+        /* Main Content */
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #000;
+        }
+
+        .top-bar {
+            padding: 20px 30px;
+            background: var(--card-bg);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .project-tabs {
+            display: flex;
+            gap: 15px;
+            overflow-x: auto;
+            padding-bottom: 5px;
+            scrollbar-width: none;
+        }
+        .tab {
+            padding: 8px 16px;
+            border-radius: 20px;
+            background: rgba(255,255,255,0.05);
+            cursor: pointer;
+            white-space: nowrap;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        .tab.active { background: var(--accent); color: #fff; }
+
+        .stats { font-size: 13px; color: var(--muted); }
+
+        /* Grid */
+        .grid {
+            flex: 1;
+            padding: 30px;
+            overflow-y: auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 24px;
+            align-content: start;
+        }
+
+        /* Card */
+        .card {
+            background: var(--card-bg);
+            border-radius: 20px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.3s;
+            position: relative;
+        }
+        .card:hover { transform: translateY(-8px); border-color: var(--accent); }
+        .card.status-approved { border: 1.5px solid var(--star); box-shadow: 0 0 20px var(--approved-glow); }
+        .card.status-blocked { opacity: 0.5; filter: grayscale(1); }
+        
+        .photo {
+            width: 100%;
+            aspect-ratio: 3/4;
+            background-color: #111;
+            background-size: cover;
+            background-position: center;
+            position: relative;
+        }
+        .photo::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 40%);
+        }
+
+        .badge-star {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            color: var(--star);
+            font-size: 28px;
+            z-index: 2;
+            filter: drop-shadow(0 0 10px rgba(255,204,0,0.5));
+            display: none;
+        }
+        .card.status-approved .badge-star { display: block; }
+
+        .card-content { padding: 20px; }
+        .card-content h3 { margin: 0 0 4px; font-size: 18px; font-weight: 700; letter-spacing: -0.5px; }
+        .card-content p { margin: 0; font-size: 13px; color: var(--muted); }
+        
+        .summary {
+            margin-top: 12px;
+            font-size: 13px;
+            line-height: 1.5;
+            color: rgba(255,255,255,0.8);
+            height: 3em;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+        }
+
+        .rating-row {
+            margin-top: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-top: 15px;
+            border-top: 1px solid var(--border);
+        }
+
+        .rating-stars {
+            display: flex;
+            gap: 2px;
+        }
+        .star-mini { cursor: pointer; color: #333; font-size: 18px; transition: color 0.1s; }
+        .star-mini.active { color: var(--star); }
+        .star-mini:hover { color: var(--accent); }
+
+        .rating-num { font-size: 12px; font-weight: 700; color: var(--star); margin-left: 8px; width: 24px; text-align: right; }
+
+        .internal-notes {
+            margin-top: 15px;
+            width: 100%;
+            min-height: 60px;
+            background: rgba(0,0,0,0.2);
+            font-size: 12px;
+            resize: none;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: #fff;
+            padding: 8px;
+        }
+
+        .actions {
+            margin-top: 20px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+        .btn {
+            padding: 10px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            border: none;
+            text-align: center;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+        .btn:active { transform: scale(0.95); }
+        
+        .btn-tg { background: #0088cc; color: #fff; text-decoration: none; grid-column: span 2; }
+        .btn-approve { background: var(--star); color: #000; }
+        .btn-block { background: #ff3b30; color: #fff; }
+        .btn-info { background: #fff; color: #000; grid-column: span 2; }
+        
+        .status-pill {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            z-index: 2;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(5px);
+        }
+
+        /* Overlay */
+        .loading-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.9);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+        }
+        
+        /* Modal for Link */
+        .modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--card-bg);
+            border: 1px solid var(--accent);
+            padding: 30px;
+            border-radius: 20px;
+            z-index: 2000;
+            display: none;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 0 50px rgba(0,0,0,0.5);
+        }
+        .modal h2 { margin-top: 0; font-size: 20px; }
+        .link-display {
+            background: #000;
+            padding: 15px;
+            border-radius: 10px;
+            font-family: monospace;
+            word-break: break-all;
+            font-size: 12px;
+            margin: 15px 0;
+            border: 1px solid var(--border);
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <h2>Фильтры 2.0</h2>
+        
+        <div class="filter-group">
+            <label>Поиск по ФИО</label>
+            <input type="text" id="filterSearch" placeholder="Имя...">
+        </div>
+
+        <div class="filter-group">
+            <label>Выбор Роли</label>
+            <input type="text" id="filterCharacter" list="charList" placeholder="Выберите или впишите роль...">
+            <datalist id="charList"></datalist>
+        </div>
+
+        <div class="filter-group">
+            <label>Гендер</label>
+            <select id="filterGender">
+                <option value="Все">Все</option>
+                <option value="МУЖЧИНА">Мужчина</option>
+                <option value="ЖЕНЩИНА">Женщина</option>
+            </select>
+        </div>
+
+        <div class="filter-group">
+            <label>Проект (Топик)</label>
+            <select id="filterProject">
+                <option value="Все">Все проекты</option>
+            </select>
+        </div>
+
+        <div class="filter-group">
+            <label>Статус</label>
+            <select id="filterStatus">
+                <option value="">Все</option>
+                <option value="pending">На рассмотрении</option>
+                <option value="approved">Утвержден (★)</option>
+                <option value="blocked">В черном списке</option>
+            </select>
+        </div>
+
+        <div class="filter-group">
+            <label>Город</label>
+            <select id="filterCity">
+                <option value="Все">Все города</option>
+                <option value="Алматы">Алматы</option>
+                <option value="Астана">Астана</option>
+                <option value="Шымкент">Шымкент</option>
+            </select>
+        </div>
+
+        <div class="filter-group">
+            <label>Возраст (лет)</label>
+            <div class="range-inputs">
+                <input type="number" id="filterAgeMin" placeholder="От">
+                <input type="number" id="filterAgeMax" placeholder="До">
+            </div>
+        </div>
+
+        <div class="filter-group">
+            <label>Рост (см)</label>
+            <div class="range-inputs">
+                <input type="number" id="filterHeightMin" placeholder="От">
+                <input type="number" id="filterHeightMax" placeholder="До">
+            </div>
+        </div>
+
+        <div class="filter-group">
+            <label>Вес (кг)</label>
+            <div class="range-inputs">
+                <input type="number" id="filterWeightMin" placeholder="От">
+                <input type="number" id="filterWeightMax" placeholder="До">
+            </div>
+        </div>
+
+        <div class="filter-group">
+            <label>Тип внешности</label>
+            <select id="filterAppearance">
+                <option value="Все">Все типы</option>
+                <option value="Азиатский">Азиатский</option>
+                <option value="Европейский">Европейский</option>
+                <option value="Славянский">Славянский</option>
+                <option value="Кавказский">Кавказский</option>
+                <option value="Африканский">Африканский</option>
+                <option value="Смешанный">Смешанный</option>
+            </select>
+        </div>
+
+        <div class="filter-group">
+            <label>Цвет волос</label>
+            <select id="filterHair">
+                <option value="Все">Все цвета</option>
+                <option value="Шатен">Шатен</option>
+                <option value="Блондин">Блондин</option>
+                <option value="Брюнет">Брюнет</option>
+                <option value="Рыжий">Рыжий</option>
+                <option value="Русый">Русый</option>
+                <option value="Седой">Седой</option>
+            </select>
+        </div>
+
+        <div class="filter-group">
+            <label>Размер одежды</label>
+            <input type="text" id="filterClothing" placeholder="Напр: S, 44...">
+        </div>
+
+        <div class="filter-group">
+            <label>Размер обуви</label>
+            <div class="range-inputs">
+                <input type="number" id="filterShoeMin" placeholder="От">
+                <input type="number" id="filterShoeMax" placeholder="До">
+            </div>
+        </div>
+
+        <button class="btn" style="background: var(--accent); color: #fff; padding: 15px; margin-top: 10px;" onclick="fetchApplications()">Применить фильтры</button>
+        <button class="btn" style="background: rgba(255,255,255,0.1); color: #fff; padding: 12px; margin-top: 5px;" onclick="location.reload()">
+            <span>🔄</span> Полное обновление
+        </button>
+        <p style="font-size: 10px; color: var(--muted); text-align: center; margin-top: 10px;">Обновление каждые 30с</p>
+    </div>
+
+    <div class="main">
+        <div class="top-bar">
+            <div class="project-tabs" id="projectTabs">
+                <div class="tab active" data-proj="Все">Все</div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <div class="stats" id="statsText">Загрузка...</div>
+                <button class="btn" style="padding: 8px 12px; background: var(--accent); color: #fff; font-size: 11px;" onclick="fetchApplications(true)">ОБНОВИТЬ</button>
+            </div>
+        </div>
+
+        <div class="grid" id="appsGrid"></div>
+    </div>
+
+    <div class="loading-overlay" id="loadingOverlay">
+        <div style="text-align: center;">
+            <div style="font-size: 40px; margin-bottom: 15px;">🎬</div>
+            <div style="color: #fff; font-weight: 700; letter-spacing: 1px;">СИНХРОНИЗАЦИЯ...</div>
+            <div id="loadingStatus" style="font-size: 12px; color: var(--muted); margin-top: 8px;">Подключение к GULYWOOD Cloud...</div>
+        </div>
+    </div>
+
+    <div class="modal" id="linkModal">
+        <h2>Ссылка для дозапроса</h2>
+        <p style="color: var(--muted); font-size: 13px;">Отправьте эту ссылку актеру. Она откроет анкету в режиме дополнения медиа-файлов.</p>
+        <div class="link-display" id="generatedLink"></div>
+        <button class="btn" style="background: var(--accent); color: #fff; width: 100%;" onclick="copyLink()">Скопировать</button>
+        <button class="btn" style="background: transparent; color: #fff; width: 100%; margin-top: 8px;" onclick="closeModal()">Закрыть</button>
+    </div>
+
+    <script>
+        const API_BASE = "https://media.sijic13.workers.dev";
+        let projects = [];
+
+        async function fetchProjects() {
+            try {
+                const res = await fetch(`${API_BASE}/api/projects`);
+                if (!res.ok) throw new Error("API Offline");
+                projects = await res.json();
+                const sel = document.getElementById('filterProject');
+                const tabs = document.getElementById('projectTabs');
+                
+                // Clear existing except "Все"
+                while(sel.children.length > 1) sel.removeChild(sel.lastChild);
+                while(tabs.children.length > 1) tabs.removeChild(tabs.lastChild);
+
+                projects.forEach(p => {
+                    const opt = document.createElement('option');
+                    opt.value = p; opt.textContent = p;
+                    sel.appendChild(opt);
+
+                    const tab = document.createElement('div');
+                    tab.className = 'tab';
+                    tab.textContent = p;
+                    tab.onclick = () => {
+                        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                        tab.classList.add('active');
+                        sel.value = p;
+                        fetchApplications();
+                    };
+                    tabs.appendChild(tab);
+                });
+            } catch (e) { 
+                console.error("Projects Error:", e);
+            }
+        }
+
+        async function fetchCharacters() {
+            try {
+                const res = await fetch(`${API_BASE}/api/characters`);
+                if (!res.ok) throw new Error("API Offline");
+                const characters = await res.json();
+                const list = document.getElementById('charList');
+                list.innerHTML = '';
+                characters.forEach(c => {
+                    const opt = document.createElement('option');
+                    opt.value = c;
+                    list.appendChild(opt);
+                });
+            } catch (e) { console.error(e); }
+        }
+
+        async function fetchApplications(silent = false) {
+            const grid = document.getElementById('appsGrid');
+            const stats = document.getElementById('statsText');
+            const overlay = document.getElementById('loadingOverlay');
+            if (!silent) {
+                overlay.style.display = 'flex';
+                grid.style.opacity = '0.3';
+            }
+            
+            const params = new URLSearchParams();
+            params.append('project', document.getElementById('filterProject').value);
+            params.append('city', document.getElementById('filterCity').value);
+            params.append('gender', document.getElementById('filterGender').value);
+            params.append('status', document.getElementById('filterStatus').value);
+            params.append('age_min', document.getElementById('filterAgeMin').value);
+            params.append('age_max', document.getElementById('filterAgeMax').value);
+            params.append('height_min', document.getElementById('filterHeightMin').value);
+            params.append('height_max', document.getElementById('filterHeightMax').value);
+            params.append('weight_min', document.getElementById('filterWeightMin').value);
+            params.append('weight_max', document.getElementById('filterWeightMax').value);
+            params.append('appearance', document.getElementById('filterAppearance').value);
+            params.append('hair_color', document.getElementById('filterHair').value);
+            params.append('clothing_size', document.getElementById('filterClothing').value);
+            params.append('shoe_min', document.getElementById('filterShoeMin').value);
+            params.append('shoe_max', document.getElementById('filterShoeMax').value);
+            params.append('character', document.getElementById('filterCharacter').value);
+            params.append('search', document.getElementById('filterSearch').value);
+
+            try {
+                const res = await fetch(`${API_BASE}/api/applications?${params.toString()}`);
+                if (!res.ok) throw new Error("Network Error");
+                const data = await res.json();
+                grid.innerHTML = '';
+                grid.style.opacity = '1';
+                stats.textContent = `База: ${data.length} анкет`;
+                data.forEach(app => grid.appendChild(createCard(app)));
+                if (data.length === 0) {
+                    grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 100px; color: var(--muted);">Анкет не найдено. Попробуйте изменить фильтры.</div>';
+                }
+            } catch (e) {
+                console.error("Fetch Error:", e);
+                if (!silent) {
+                    grid.innerHTML = `
+                        <div style="grid-column: 1/-1; text-align: center; padding: 100px;">
+                            <div style="font-size: 40px; margin-bottom: 20px;">📡</div>
+                            <div style="color: #ff3b30; font-weight: 700; margin-bottom: 10px;">ОШИБКА СЕТИ</div>
+                            <div style="color: var(--muted); font-size: 13px; margin-bottom: 20px;">Не удалось подключиться к серверу Cloudflare.</div>
+                            <button class="btn" style="background: var(--accent); color: #fff; margin: 0 auto; width: 180px;" onclick="fetchApplications()">ПОВТОРИТЬ ПОПЫТКУ</button>
+                        </div>
+                    `;
+                }
+            } finally {
+                if (!silent) overlay.style.display = 'none';
+            }
+        }
+
+        function createCard(app) {
+            const div = document.createElement('div');
+            const status = app.status || 'pending';
+            div.className = `card status-${status}`;
+            
+            // Map gender for display
+            const genderLabel = app.gender === 'МУЖЧИНА' ? '👨 МУЖ' : (app.gender === 'ЖЕНЩИНА' ? '👩 ЖЕН' : app.gender);
+            
+            // Photo fallback
+            const photoUrl = "https://via.placeholder.com/300x400/111/fff?text=NO+PHOTO";
+            
+            div.innerHTML = `
+                <div class="photo" style="background-image: url('${photoUrl}')">
+                    <div class="badge-star">★</div>
+                    <div class="status-pill">${status === 'approved' ? 'Утвержден' : (status === 'blocked' ? 'БЛОК' : 'Новый')}</div>
+                </div>
+                <div class="card-content">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <h3 style="margin-bottom: 2px;">${app.full_name}</h3>
+                        <span style="font-size: 10px; background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px;">${genderLabel}</span>
+                    </div>
+                    <p style="color: var(--accent); font-weight: 700; font-size: 11px; margin-bottom: 8px; text-transform: uppercase;">🎭 РОЛЬ: ${app.character_name || 'Не указана'}</p>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;">
+                        <div style="font-size: 12px; color: var(--muted);">📍 ${app.city}</div>
+                        <div style="font-size: 12px; color: var(--muted); text-align: right;">🎂 ${app.age || '?'} лет</div>
+                        <div style="font-size: 12px; color: var(--muted);">📏 ${app.height || '?'} см / ${app.weight || '?'} кг</div>
+                        <div style="font-size: 12px; color: var(--muted); text-align: right;">👕 ${app.clothing_size || '?'} / 👟 ${app.shoe_size || '?'}</div>
+                    </div>
+
+                    <p style="font-size: 11px; margin-top: 2px; padding-top: 5px; border-top: 1px solid rgba(255,255,255,0.05);">
+                        🎭 ${app.appearance || '—'} • 💇 ${app.hair_color || '—'}
+                    </p>
+                    
+                    <div class="summary" title="${app.experience_summary || ''}">${app.experience_summary || 'Нет опыта'}</div>
+                    
+                    <div class="rating-row">
+                        <div class="rating-stars">
+                            ${Array.from({length: 10}, (_, i) => `
+                                <span class="star-mini ${i < app.rating ? 'active' : ''}" onclick="updateField('${app.id}', {rating: ${i+1}})">★</span>
+                            `).join('')}
+                        </div>
+                        <div class="rating-num">${app.rating || 0}</div>
+                    </div>
+
+                    <textarea class="internal-notes" placeholder="Заметки директора..." 
+                        onblur="updateField('${app.id}', {internal_notes: this.value})">${app.internal_notes || ''}</textarea>
+
+                    <div class="actions">
+                        ${app.video_tg_link ? `<a href="${app.video_tg_link}" target="_blank" class="btn btn-tg"><span>🎥</span> В Telegram</a>` : ''}
+                        <button class="btn btn-approve" onclick="updateField('${app.id}', {status: '${status === 'approved' ? 'pending' : 'approved'}'})">
+                            ${status === 'approved' ? 'Снять звезду' : '★ Утвердить'}
+                        </button>
+                        <button class="btn btn-block" onclick="updateField('${app.id}', {status: '${status === 'blocked' ? 'pending' : 'blocked'}'})">
+                            ${status === 'blocked' ? 'Разблокировать' : '🚫 В блок'}
+                        </button>
+                        <button class="btn btn-info" onclick="requestData('${app.id}')">📎 Запросить доп. данные</button>
+                    </div>
+                </div>
+            `;
+            return div;
+        }
+
+        async function updateField(id, updates) {
+            try {
+                const res = await fetch(`${API_BASE}/api/applications/update`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id, ...updates })
+                });
+                if (!res.ok) throw new Error("Update Failed");
+                if (updates.status) fetchApplications(true);
+            } catch (e) { alert("Ошибка обновления"); }
+        }
+
+        async function requestData(id) {
+            try {
+                const res = await fetch(`${API_BASE}/api/applications/request-info`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id })
+                });
+                const data = await res.json();
+                const link = `${window.location.origin}/casting.html?token=${data.token}`;
+                document.getElementById('generatedLink').textContent = link;
+                document.getElementById('linkModal').style.display = 'block';
+            } catch (e) { alert("Ошибка"); }
+        }
+
+        function copyLink() {
+            const text = document.getElementById('generatedLink').textContent;
+            navigator.clipboard.writeText(text);
+            alert("Ссылка скопирована!");
+        }
+
+        function closeModal() { document.getElementById('linkModal').style.display = 'none'; }
+
+        // Initial Load sequence
+        (async function init() {
+            await fetchProjects();
+            await fetchCharacters();
+            await fetchApplications();
+        })();
+
+        // Auto-refresh every 30 seconds (silent)
+        setInterval(() => {
+            fetchApplications(true);
+            fetchCharacters(); // Update suggestions
+        }, 30000);
+    </script>
+</body>
+</html>

@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ОБНОВЛЕНИЕ АНКЕТЫ | GULYWOOD</title>
+    <link rel="icon" type="image/png" href="favicon.png">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #000;
+            --card-bg: rgba(255, 255, 255, 0.05);
+            --accent: #7aa2ff;
+            --text: rgba(255, 255, 255, 0.92);
+            --muted: rgba(255, 255, 255, 0.6);
+            --stroke: rgba(255, 255, 255, 0.15);
+            --error: #ff3b30;
+            --success: #4cd964;
+            --radius: 20px;
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            margin: 0; padding: 0;
+            background: var(--bg);
+            background-image: radial-gradient(circle at 50% -20%, #0d1117 0%, #000 70%);
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            display: flex; justify-content: center; min-height: 100vh;
+        }
+
+        .container { width: 100%; max-width: 500px; padding: 20px; z-index: 10; position: relative; }
+
+        .header { text-align: center; margin-bottom: 32px; }
+        .header h1 { font-size: 20px; font-weight: 700; color: var(--accent); text-transform: uppercase; text-shadow: 0 0 20px rgba(122, 162, 255, 0.4); }
+
+        .card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--stroke);
+            border-radius: var(--radius);
+            padding: 24px;
+            backdrop-filter: blur(25px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+        }
+
+        .user-info { font-size: 14px; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid var(--stroke); color: var(--muted); }
+        .user-info b { color: var(--text); }
+
+        .instruction { background: rgba(122, 162, 255, 0.08); padding: 16px; border-radius: 12px; font-size: 13px; margin-bottom: 24px; color: #d0e1ff; border: 1px solid rgba(122, 162, 255, 0.2); }
+
+        .upload-area {
+            border: 2px dashed var(--stroke); border-radius: 16px; padding: 30px;
+            text-align: center; cursor: pointer; transition: 0.2s; background: rgba(255, 255, 255, 0.02);
+        }
+        .upload-area:hover { border-color: var(--accent); background: rgba(122, 162, 255, 0.05); }
+
+        .preview-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 15px; }
+        .preview-item { aspect-ratio: 3/4; background: rgba(255, 255, 255, 0.1); border-radius: 12px; overflow: hidden; border: 1px solid var(--stroke); }
+        .preview-item img, .preview-item video { width: 100%; height: 100%; object-fit: cover; }
+
+        .btn {
+            width: 100%; padding: 18px; border-radius: 16px; border: none; font-weight: 700;
+            cursor: pointer; background: var(--accent); color: #fff; text-transform: uppercase;
+            box-shadow: 0 10px 30px rgba(122, 162, 255, 0.3); transition: 0.2s;
+        }
+        .btn:disabled { opacity: 0.5; background: #333; box-shadow: none; }
+
+        .loading-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 1000; backdrop-filter: blur(10px); }
+        .spinner { width: 40px; height: 40px; border: 3px solid rgba(122, 162, 255, 0.1); border-top: 3px solid var(--accent); border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        #successScreen { display: none; text-align: center; padding: 60px 20px; }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Обновление медиа</h1>
+            <p>Sklad Productions Casting</p>
+        </div>
+
+        <div class="card" id="formCard">
+            <div class="user-info" id="userInfo">
+                <div class="spinner" style="margin:20px auto"></div>
+            </div>
+
+            <div class="instruction" id="instructionBox">
+                Загрузка данных участника...
+            </div>
+
+            <div id="photoSection" style="display:none;">
+                <div class="upload-area" onclick="document.getElementById('photoInput').click()">
+                    <i style="font-style: normal; font-size: 24px;">📸</i><br>
+                    <span>Выбрать фотографии</span>
+                    <input type="file" id="photoInput" multiple accept="image/*" style="display:none">
+                </div>
+                <div class="preview-grid" id="photoPreview"></div>
+            </div>
+
+            <div id="videoSection" style="display:none;">
+                <div class="upload-area" onclick="document.getElementById('videoInput').click()">
+                    <i style="font-style: normal; font-size: 24px;">🎬</i><br>
+                    <span>Выбрать видео-визитку</span>
+                    <input type="file" id="videoInput" accept="video/*" style="display:none">
+                </div>
+                <div id="videoPreview" style="margin-top:15px;"></div>
+            </div>
+
+            <button class="btn" id="submitBtn" disabled style="margin-top: 24px;">ОТПРАВИТЬ МЕНЕДЖЕРУ</button>
+        </div>
+
+        <div id="successScreen">
+            <div style="font-size: 60px; margin-bottom: 20px;">✅</div>
+            <h2>Материалы загружены!</h2>
+            <p style="color:var(--muted)">Менеджер получит уведомление об обновлении вашей анкеты.</p>
+        </div>
+    </div>
+
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner"></div>
+        <div id="loadingText" style="margin-top: 15px;">Обработка файлов...</div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = "https://waekzofajzqcpoeldhkt.supabase.co";
+        const SUPABASE_KEY = "sb_publishable_XVByRUkaKbM-11ChwOd2Aw_y24CSb4V";
+        const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const appId = urlParams.get('id');
+        const type = urlParams.get('type') || 'photo';
+        const ctxCid = urlParams.get('cid');
+        const ctxTid = urlParams.get('tid');
+
+        let actorData = null;
+        let newMediaUrls = [];
+        let pendingCount = 0;
+
+        async function loadActor() {
+            if (!appId) {
+                document.getElementById('userInfo').innerHTML = "❌ Ошибка: ID не найден";
+                return;
+            }
+
+            const { data, error } = await sb.from('casting_applications').select('*').eq('id', appId).single();
+            
+            if (error || !data) {
+                document.getElementById('userInfo').innerHTML = "❌ Анкета не найдена";
+                return;
+            }
+
+            actorData = data;
+            document.getElementById('userInfo').innerHTML = `👤 Актер: <b>${data.full_name}</b><br>🎬 Проект: <b>${data.casting_target}</b>`;
+            document.getElementById('instructionBox').textContent = type === 'photo' ? "Загрузите новые фотографии для вашей анкеты." : "Загрузите актуальную видео-визитку.";
+            
+            document.getElementById(type === 'photo' ? 'photoSection' : 'videoSection').style.display = 'block';
+        }
+
+        loadActor();
+
+        // Обработка фото
+        document.getElementById('photoInput').onchange = async (e) => {
+            const files = Array.from(e.target.files);
+            const preview = document.getElementById('photoPreview');
+            
+            for (const file of files) {
+                const item = document.createElement('div');
+                item.className = 'preview-item';
+                item.innerHTML = '<div class="spinner" style="width:20px;height:20px;margin:30px auto"></div>';
+                preview.appendChild(item);
+
+                pendingCount++;
+                updateBtn();
+
+                try {
+                    const path = `photos/upd_${Date.now()}_${Math.random().toString(36).substr(2,5)}.jpg`;
+                    const { data, error } = await sb.storage.from('casting_media').upload(path, file);
+                    if (error) throw error;
+
+                    const url = `${SUPABASE_URL}/storage/v1/object/public/casting_media/${path}`;
+                    newMediaUrls.push(url);
+                    item.innerHTML = `<img src="${url}">`;
+                } catch (err) {
+                    item.remove();
+                    alert("Ошибка загрузки");
+                } finally {
+                    pendingCount--;
+                    updateBtn();
+                }
+            }
+        };
+
+        // Обработка видео
+        document.getElementById('videoInput').onchange = async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const preview = document.getElementById('videoPreview');
+            preview.innerHTML = '<div class="spinner" style="width:20px;height:20px;margin:auto"></div><p style="text-align:center;font-size:12px">Загрузка видео...</p>';
+
+            pendingCount++;
+            updateBtn();
+
+            try {
+                const path = `videos/upd_${Date.now()}_${Math.random().toString(36).substr(2,5)}.mp4`;
+                const { error } = await sb.storage.from('casting_media').upload(path, file);
+                if (error) throw error;
+
+                const url = `${SUPABASE_URL}/storage/v1/object/public/casting_media/${path}`;
+                newMediaUrls = [url]; // Видео только одно
+                preview.innerHTML = `<video src="${url}" controls style="width:100%; border-radius:12px;"></video>`;
+            } catch (err) {
+                preview.innerHTML = "❌ Ошибка загрузки видео";
+            } finally {
+                pendingCount--;
+                updateBtn();
+            }
+        };
+
+        function updateBtn() {
+            document.getElementById('submitBtn').disabled = pendingCount > 0 || newMediaUrls.length === 0;
+        }
+
+        document.getElementById('submitBtn').onclick = async () => {
+            const overlay = document.getElementById('loadingOverlay');
+            overlay.style.display = 'flex';
+
+            try {
+                let updatePayload = {};
+                if (type === 'photo') {
+                    // Объединяем старые фото с новыми
+                    const oldPhotos = actorData.photo_urls || [];
+                    updatePayload.photo_urls = [...oldPhotos, ...newMediaUrls];
+                } else {
+                    updatePayload.video_audition_url = newMediaUrls[0];
+                }
+
+                // 1. Сохраняем в БД
+                const { error } = await sb.from('casting_applications').update(updatePayload).eq('id', appId);
+                if (error) throw error;
+
+                // 2. Уведомляем бота (Репост)
+                const botPayload = {
+                    ...actorData,
+                    ...updatePayload,
+                    chat_id: ctxCid ? parseInt(ctxCid) : actorData.chat_id,
+                    thread_id: ctxTid ? parseInt(ctxTid) : actorData.thread_id,
+                    application_id: appId
+                };
+
+                await fetch('https://media-seven-eta.vercel.app/api/casting', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(botPayload)
+                });
+
+                document.getElementById('formCard').style.display = 'none';
+                document.getElementById('successScreen').style.display = 'block';
+
+            } catch (err) {
+                alert("Ошибка: " + err.message);
+            } finally {
+                overlay.style.display = 'none';
+            }
+        };
+    </script>
+</body>
+
+</html>
