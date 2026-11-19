@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GULYWOOD CASTING CRM PRO</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root { 
+            --bg: #090a0f; --card: #15161e; --accent: #ff5722; --text: #f0f0f0; 
+            --muted: #8e92a2; --border: rgba(255,255,255,0.08); --glass: rgba(255,255,255,0.03);
+            --new: #4caf50; --trash: #f44336; --archive: #9e9e9e; --interest: #ffeb3b;
+        }
+        
+        * { box-sizing: border-box; }
+        body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; overflow-x: hidden; }
+        
+        /* Layout */
+        .container { max-width: 1600px; margin: 0 auto; padding: 20px; }
+        
+        /* Header & Tabs */
+        .header { display: flex; flex-direction: column; gap: 20px; margin-bottom: 30px; position: sticky; top: 0; z-index: 100; background: var(--bg); padding-bottom: 10px; }
+        .header-top { display: flex; justify-content: space-between; align-items: center; }
+        .logo { font-size: 24px; font-weight: 800; letter-spacing: -1px; }
+        .logo span { color: var(--accent); }
+        
+        .tabs { display: flex; gap: 10px; overflow-x: auto; padding: 5px 0; scrollbar-width: none; }
+        .tab { 
+            padding: 10px 20px; background: var(--glass); border: 1px solid var(--border); border-radius: 30px; 
+            cursor: pointer; font-size: 13px; font-weight: 600; white-space: nowrap; transition: 0.2s; color: var(--muted);
+        }
+        .tab:hover { background: rgba(255,255,255,0.1); }
+        .tab.active { background: var(--accent); color: white; border-color: var(--accent); }
+
+        .header { 
+            background: var(--bg); padding: 15px 20px; border-bottom: 1px solid var(--border); 
+            position: sticky; top: 0; z-index: 1000; backdrop-filter: blur(10px);
+        }
+
+        /* Filters Popup */
+        .filters-panel { 
+            position: fixed; top: 70px; left: 50%; transform: translateX(-50%);
+            width: 95%; max-width: 650px; max-height: 85vh; overflow-y: auto;
+            background: #111218; border: 1px solid var(--accent); border-radius: 16px; 
+            padding: 15px; z-index: 1100; box-shadow: 0 20px 50px rgba(0,0,0,0.9);
+            display: none; flex-direction: column; gap: 12px;
+        }
+        .filters-active { display: flex !important; }
+        
+        .filter-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; }
+        .filter-group { display: flex; flex-direction: column; gap: 4px; width: 100%; }
+        .filter-group label { font-size: 9px; color: var(--muted); font-weight: 700; text-transform: uppercase; }
+        
+        input, select { 
+            background: #1e2029; border: 1px solid var(--border); padding: 8px 10px; color: white; border-radius: 6px; font-size: 12px; outline: none; transition: 0.2s; width: 100%; box-sizing: border-box;
+        }
+        input:focus { border-color: var(--accent); background: #252833; }
+        
+        /* Mobile Overrides */
+        @media (max-width: 600px) {
+            .header { padding: 10px; }
+            .logo { font-size: 16px; }
+            .tabs { overflow-x: auto; justify-content: flex-start !important; padding-bottom: 5px; }
+            .tab { padding: 6px 12px; font-size: 11px; white-space: nowrap; }
+            .grid { grid-template-columns: repeat(2, 1fr); gap: 8px; padding: 10px; }
+            .card { width: 100% !important; min-width: 0; }
+            .card-img { height: 160px; }
+            .actor-name { font-size: 13px; }
+            .actor-details { font-size: 10px; }
+            .status-buttons button { font-size: 14px; padding: 4px; }
+            .btn-filter-toggle { font-size: 10px; padding: 6px 10px; }
+        }
+
+        /* Grid */
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; padding: 12px; }
+
+        /* Card */
+        .card { 
+            background: var(--card); border-radius: 12px; border: 1px solid var(--border); overflow: hidden; 
+            transition: 0.3s; position: relative; display: flex; flex-direction: column; cursor: pointer;
+        }
+        .card:hover { transform: translateY(-3px); border-color: var(--accent); box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .card-img { width: 100%; height: 200px; object-fit: cover; background: #1a1b23; }
+        .card-body { padding: 8px; flex-grow: 1; display: flex; flex-direction: column; }
+        
+        /* Thumbnails Gallery */
+        .thumb-strip { display: flex; gap: 4px; margin-bottom: 8px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+        .thumb-strip::-webkit-scrollbar { display: none; }
+        .thumb { width: 40px; height: 40px; border-radius: 6px; object-fit: cover; border: 1px solid var(--border); transition: 0.2s; flex-shrink: 0; }
+        .thumb:hover { border-color: var(--accent); transform: scale(1.05); }
+
+        .actor-name { font-size: 13px; font-weight: 700; color: white; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .actor-main-params { display: flex; gap: 8px; margin-bottom: 6px; border-bottom: 1px solid #252833; padding-bottom: 6px; }
+        .param-item { display: flex; flex-direction: column; align-items: center; }
+        .param-val { font-size: 12px; font-weight: 800; color: var(--accent); }
+        .param-label { font-size: 7px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+
+        .actor-details { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 8px; font-size: 10px; }
+        .detail-row { display: flex; flex-direction: column; }
+        .detail-label { font-size: 7px; color: var(--muted); text-transform: uppercase; margin-bottom: 1px; }
+        .detail-val { color: #eee; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        /* Badges */
+        .badge { position: absolute; padding: 3px 8px; border-radius: 10px; font-size: 9px; font-weight: 700; z-index: 10; }
+        .badge-new { top: 10px; left: 10px; background: var(--new); color: white; }
+        .badge-rating { top: 10px; right: 10px; background: rgba(0,0,0,0.8); color: #ffd700; border: 1px solid #ffd700; }
+        .badge-status { bottom: 10px; left: 10px; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); color: white; border: 1px solid var(--border); }
+
+        /* Content */
+        .card-body { padding: 12px; flex-grow: 1; }
+        .actor-name { font-size: 16px; font-weight: 800; color: white; margin-bottom: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .actor-main-params { display: flex; gap: 10px; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+        .param-item { display: flex; flex-direction: column; }
+        .param-val { font-size: 14px; font-weight: 700; color: var(--accent); }
+        .param-label { font-size: 9px; color: var(--muted); text-transform: uppercase; }
+
+        .actor-details { font-size: 11px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+        .detail-row { display: flex; flex-direction: column; gap: 1px; }
+        .detail-label { font-size: 9px; color: var(--muted); }
+        .detail-val { color: #ccc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        .tags-wrap { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 10px; }
+        .tag { background: var(--glass); padding: 3px 6px; border-radius: 4px; font-size: 9px; border: 1px solid var(--border); }
+
+        .text-block { background: rgba(0,0,0,0.2); padding: 8px; border-radius: 6px; font-size: 11px; line-height: 1.3; color: #999; white-space: pre-line; margin-bottom: 12px; max-height: 60px; overflow-y: auto; scrollbar-width: none; }
+
+        /* Actions */
+        .card-actions { display: flex; flex-direction: column; gap: 8px; margin-top: auto; }
+        .action-row-main { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+        .action-row-status { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; position: relative; }
+        
+        .btn { 
+            padding: 8px; border: none; border-radius: 8px; cursor: pointer; font-size: 11px; font-weight: 700; 
+            display: flex; align-items: center; justify-content: center; gap: 4px; transition: 0.2s;
+            height: 38px;
+        }
+        .btn-tg { background: #24A1DE; color: white; width: 100%; }
+        .btn-video { background: #ff0000; color: white; width: 100%; }
+        .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--muted); height: 34px; }
+        .btn-outline:hover { background: var(--glass); color: white; border-color: white; }
+        .btn-outline.active-status { background: var(--accent); color: white; border-color: var(--accent); }
+        
+        .status-buttons { display: flex; gap: 4px; justify-content: flex-end; position: relative; }
+        .rating-picker, .storage-picker { 
+            position: absolute; bottom: 40px; right: 0; background: #252833; border: 1px solid var(--accent); 
+            border-radius: 8px; display: none; padding: 6px; z-index: 110;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            width: auto; height: auto;
+        }
+        .rating-picker { grid-template-columns: repeat(5, 1fr); gap: 4px; }
+        .storage-picker { flex-direction: column; gap: 4px; width: 120px; }
+        .rating-picker span, .storage-picker span { 
+            display: flex; align-items: center; justify-content: center; 
+            font-size: 11px; font-weight: 700; color: white; cursor: pointer; border-radius: 4px; transition: 0.2s;
+        }
+        .rating-picker span { width: 26px; height: 26px; }
+        .storage-picker span { padding: 8px; font-size: 11px; justify-content: flex-start; gap: 8px; }
+        .rating-picker span:hover, .storage-picker span:hover { background: var(--accent); }
+
+        /* Floating Sync */
+        .sync-btn { position: fixed; bottom: 30px; right: 30px; width: 60px; height: 60px; border-radius: 30px; background: var(--accent); color: white; border: none; cursor: pointer; box-shadow: 0 5px 20px rgba(255,87,34,0.4); z-index: 1000; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 20px; }
+        .sync-btn:active { transform: scale(0.9); }
+
+        @media (max-width: 600px) {
+            .container { padding: 10px; }
+            .grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header class="header">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:15px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <h1 style="margin:0; font-size: 24px; font-weight: 800; letter-spacing: -1px; background: linear-gradient(135deg, #fff 0%, #aaa 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">GULYWOOD <span>CRM</span></h1>
+                <button onclick="copyFormLink()" class="btn" style="background: rgba(255,255,255,0.1); border: 1px solid var(--border); padding: 5px 12px; height: 32px; font-size: 11px; color: #fff; cursor: pointer;">
+                    🔗 Анкета
+                </button>
+            </div>
+            
+            <div class="tabs" id="mainTabs" style="margin-top:0; flex-grow:1; justify-content:center;">
+                <div class="tab active" data-tab="new">Входящие</div>
+                <div class="tab" data-tab="all">Общая база</div>
+                <div class="tab" data-tab="interest">Интересные</div>
+                <div class="tab" data-tab="selected">Отобранные</div>
+                <div class="tab" data-tab="sent">В Телеграме</div>
+                <div class="tab" data-tab="archive">Архив</div>
+                <div class="tab" data-tab="trash">Трэш</div>
+            </div>
+
+            <button class="btn-filter-toggle" onclick="toggleFilters()">🔍 Фильтры и Поиск</button>
+        </div>
+    </div>
+
+    <div class="filters-panel" id="filtersPanel">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <h3 style="margin:0; color:var(--accent); font-size:16px;">🔍 Настройка фильтров</h3>
+            <button onclick="toggleFilters()" style="background:none; border:none; color:white; font-size:24px; cursor:pointer;">&times;</button>
+        </div>
+        
+        <div class="filter-group">
+            <label>Глобальный поиск</label>
+            <input type="text" id="sQuery" placeholder="Имя, город, опыт, приметы..." oninput="render()">
+        </div>
+
+        <div class="filter-row" style="grid-template-columns: 1fr 1fr 1fr;">
+            <div class="filter-group">
+                <label>Проект</label>
+                <select id="fPrj" onchange="render()"><option value="">Все проекты</option></select>
+            </div>
+            <div class="filter-group">
+                <label>Роль</label>
+                <select id="fRole" onchange="render()"><option value="">Все роли</option></select>
+            </div>
+            <div class="filter-group">
+                <label>Формат</label>
+                <select id="fFormat" onchange="render()"><option value="">Все форматы</option></select>
+            </div>
+        </div>
+
+        <div class="filter-row" style="grid-template-columns: 1fr 1fr 1fr;">
+            <div class="filter-group">
+                <label>Пол</label>
+                <select id="fGen" onchange="render()"><option value="">Все</option><option value="Мужской">Мужской</option><option value="Женский">Женский</option></select>
+            </div>
+            <div class="filter-group">
+                <label>Город</label>
+                <select id="fCity" onchange="render()"><option value="">Все города</option></select>
+            </div>
+            <div class="filter-group">
+                <label>Типаж</label>
+                <select id="fEth" onchange="render()"><option value="">Все типажи</option></select>
+            </div>
+        </div>
+
+        <div class="filter-row" style="grid-template-columns: 1fr;">
+            <div class="filter-group">
+                <label>Этнос / Национальность</label>
+                <select id="fNat" onchange="render()"><option value="">Все национальности</option></select>
+            </div>
+        </div>
+
+        <div class="filter-row" style="grid-template-columns: 1fr 1fr 1fr;">
+            <div class="filter-group">
+                <label>Возраст</label>
+                <div style="display:flex; gap:2px;">
+                    <input type="number" id="fAgeMin" placeholder="От" oninput="render()">
+                    <input type="number" id="fAgeMax" placeholder="До" oninput="render()">
+                </div>
+            </div>
+            <div class="filter-group">
+                <label>Рост</label>
+                <div style="display:flex; gap:2px;">
+                    <input type="number" id="fHMin" placeholder="От" oninput="render()">
+                    <input type="number" id="fHMax" placeholder="До" oninput="render()">
+                </div>
+            </div>
+            <div class="filter-group">
+                <label>Вес</label>
+                <div style="display:flex; gap:2px;">
+                    <input type="number" id="fWMin" placeholder="От" oninput="render()">
+                    <input type="number" id="fWMax" placeholder="До" oninput="render()">
+                </div>
+            </div>
+        </div>
+
+        <div style="display:flex; justify-content:center; gap:10px; margin-top:15px; padding-bottom:5px;">
+            <button class="btn btn-outline" onclick="resetFilters()" style="width:120px; height:36px; font-size:11px;">СБРОСИТЬ</button>
+            <button class="btn btn-primary" onclick="toggleFilters()" style="width:120px; height:36px; font-size:11px; background:var(--accent); color:white;">ГОТОВО</button>
+        </div>
+    </div>
+
+    <div id="actorGrid" class="grid"></div>
+</div>
+
+<button class="sync-btn" id="syncBtn" onclick="syncAll()">🔄</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+
+<script>
+    const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSOZprF0d6DAsO50Vng0OOnuPw-ZS79sVIOe3ZqlX9r7RKm4eWX5u6AA5gHQ8xb30vT28kQr2F8WRxm/pub?gid=1424975507&single=true&output=csv";
+    const RATINGS_API = "https://script.google.com/macros/s/AKfycbxA3xs799pc5MHjgbVAxXc1uPqLyF9k_XLLUoCfEiLx30OOvqA4xv7SrnQP3OEVF-k/exec";
+    const BOT_TOKEN = "8534227633:AAEqULwA8rypkF-BW87G_9ACmKWNEoGZFI4";
+    const CHAT_ID = "-1003842243687";
+    const THREAD_ID = 2;
+
+    let actors = [];
+    let cloudData = {};
+    let currentTab = "new";
+
+    function toggleFilters() {
+        document.getElementById('filtersPanel').classList.toggle('filters-active');
+    }
+
+    function resetFilters() {
+        ['sQuery','fAgeMin','fAgeMax','fHMin','fHMax','fWMin','fWMax'].forEach(id => {
+            const el = document.getElementById(id);
+            if(el) el.value = '';
+        });
+        ['fPrj','fRole','fGen','fCity','fEth','fFormat','fNat'].forEach(id => {
+            const el = document.getElementById(id);
+            if(el) el.value = '';
+        });
+        render();
+    }
+
+    // Инициализация табов
+    document.querySelectorAll('.tab').forEach(tab => {
+        tab.onclick = () => {
+            document.querySelector('.tab.active').classList.remove('active');
+            tab.classList.add('active');
+            currentTab = tab.dataset.tab;
+            render();
+        }
+    });
+
+    async function syncAll() {
+        const btn = document.getElementById('syncBtn');
+        btn.innerText = "⏳";
+        try {
+            const r = await fetch(RATINGS_API + "?action=get&cb=" + Math.random());
+            const text = await r.text();
+            try { cloudData = JSON.parse(text); } catch(e) { cloudData = {}; }
+
+            Papa.parse(CSV_URL + "&cb=" + Date.now(), {
+                download: true, header: true, skipEmptyLines: true,
+                complete: function(res) {
+                    actors = res.data.filter(a => Object.values(a).some(v => v)).map((a, i) => ({...a, _row: i + 2}));
+                    updateDynamicFilters();
+                    render();
+                    btn.innerText = "🔄";
+                }
+            });
+        } catch(e) { btn.innerText = "❌"; }
+    }
+
+    function updateDynamicFilters() {
+        const prjSel = document.getElementById('fPrj');
+        const roleSel = document.getElementById('fRole');
+        const citySel = document.getElementById('fCity');
+        const ethSel = document.getElementById('fEth');
+        const fmtSel = document.getElementById('fFormat');
+        const natSel = document.getElementById('fNat');
+
+        const getVals = (idx) => {
+            const set = new Set();
+            actors.forEach(a => {
+                const keys = Object.keys(a);
+                const val = a[keys[idx]] || "";
+                // Умное разделение: только запятые ВНЕ скобок
+                const parts = val.split(/,(?![^(]*\))/);
+                parts.forEach(s => { if(s.trim()) set.add(s.trim()); });
+            });
+            return [...set].sort();
+        };
+
+        const prjs = getVals(2);   // C
+        const roles = getVals(12); // M
+        const cities = getVals(5);  // F
+        const types = getVals(14);  // O
+        const formats = getVals(19); // T
+        const nats = getVals(15);    // P: Этнос
+
+        if (prjSel) prjSel.innerHTML = '<option value="">Все проекты</option>' + prjs.map(p => `<option value="${p}">${p}</option>`).join('');
+        if (roleSel) roleSel.innerHTML = '<option value="">Все роли</option>' + roles.map(r => `<option value="${r}">${r}</option>`).join('');
+        if (citySel) citySel.innerHTML = '<option value="">Все города</option>' + cities.map(c => `<option value="${c}">${c}</option>`).join('');
+        if (ethSel) ethSel.innerHTML = '<option value="">Все типажи</option>' + types.map(t => `<option value="${t}">${t}</option>`).join('');
+        if (fmtSel) fmtSel.innerHTML = '<option value="">Все форматы</option>' + formats.map(f => `<option value="${f}">${f}</option>`).join('');
+        if (natSel) natSel.innerHTML = '<option value="">Все национальности</option>' + nats.map(n => `<option value="${n}">${n}</option>`).join('');
+    }
+
+    function getDirectLink(url) {
+        if (!url || typeof url !== 'string') return "";
+        let id = (url.match(/id=([^&]+)/) || url.match(/\/d\/([^/]+)/) || url.match(/open\?id=([^&]+)/) || [])[1];
+        // Если это прямая ссылка или ID найден
+        if (id) return `https://lh3.googleusercontent.com/d/${id}`;
+        return url;
+    }
+
+    function setCloudValue(id, val) {
+        cloudData[id] = val;
+        render();
+        const url = `${RATINGS_API}?action=set&id=${id}&score=${encodeURIComponent(val)}&t=${Date.now()}`;
+        new Image().src = url;
+        fetch(url, { mode: 'no-cors' });
+    }
+
+    function copyFormLink() {
+        const link = "https://docs.google.com/forms/d/e/1FAIpQLSe6KZFvQ555zu1TFVYVH53LXRZ2jskKfPXDPLjWEWYq9vyDlg/viewform";
+        navigator.clipboard.writeText(link).then(() => {
+            alert("Ссылка на форму скопирована!");
+        }).catch(err => {
+            console.error('Ошибка копирования:', err);
+            const input = document.createElement('input');
+            input.value = link;
+            document.body.appendChild(input);
+            input.select();
+            document.execCommand('copy');
+            document.body.removeChild(input);
+            alert("Ссылка на форму скопирована!");
+        });
+    }
+
+    function render() {
+        const grid = document.getElementById('actorGrid');
+        if (!grid) return;
+        
+        const sQ = (document.getElementById('sQuery').value || "").toLowerCase();
+        const fPrjVal = document.getElementById('fPrj').value;
+        const fRoleVal = document.getElementById('fRole').value;
+        const fGenVal = document.getElementById('fGen').value;
+        const fCityVal = document.getElementById('fCity').value;
+        const fEthVal = document.getElementById('fEth').value;
+        const fFmtVal = document.getElementById('fFormat').value;
+        const fNatVal = document.getElementById('fNat').value;
+
+        const fAMin = parseInt(document.getElementById('fAgeMin').value) || 0;
+        const fAMax = parseInt(document.getElementById('fAgeMax').value) || 99;
+        const fHMin = parseInt(document.getElementById('fHMin').value) || 0;
+        const fHMax = parseInt(document.getElementById('fHMax').value) || 250;
+        const fWMin = parseInt(document.getElementById('fWMin').value) || 0;
+        const fWMax = parseInt(document.getElementById('fWMax').value) || 300;
+
+        let filtered = actors.filter(a => {
+            if (!a || !a._row) return false;
+            const id = a._row;
+            const keys = Object.keys(a);
+            
+            const name = (a[keys[1]] || "").toLowerCase(); // B
+            if (name.length < 1 && !(a[keys[10]])) return false; // K: Фото
+
+            if (fPrjVal && a[keys[2]] !== fPrjVal) return false; // C
+            if (fRoleVal && a[keys[12]] !== fRoleVal) return false; // M
+            if (fFmtVal && !(a[keys[19]] || "").includes(fFmtVal)) return false; // T
+            
+            if (fGenVal && a[keys[3]] !== fGenVal) return false; // D
+            if (fCityVal && a[keys[5]] !== fCityVal) return false; // F
+            
+            if (fEthVal && !(a[keys[14]] || "").includes(fEthVal)) return false; // O
+            if (fNatVal && !(a[keys[15]] || "").includes(fNatVal)) return false; // P
+            if (fNatVal && !(a[keys[15]] || "").includes(fNatVal)) return false; // P
+            
+            const val = cloudData[id] || "0";
+            const score = parseInt(val) || 0;
+            const status = val.includes(":") ? val.split(":")[1].replace("_SENT", "") : "Новая";
+            const isSent = val.includes("_SENT");
+            
+            // ПРАВИЛА ВКЛАДОК
+            if (currentTab === "new") { if (status !== "Новая") return false; }
+            else if (currentTab === "interest") { if (status !== "Interesting") return false; }
+            else if (currentTab === "selected") { if (status !== "Selected") return false; }
+            else if (currentTab === "sent") { 
+                if (!isSent) return false; 
+                if (status === "Archive" || status === "Trash") return false;
+            }
+            else if (currentTab === "archive") { if (status !== "Archive") return false; }
+            else if (currentTab === "trash") { if (status !== "Trash") return false; }
+            else if (currentTab === "all") {
+                if (status === "Trash") return false;
+                if (status === "Archive" && !sQ) return false;
+            }
+
+            // Глобальный поиск и фильтры
+            const allText = JSON.stringify(a).toLowerCase();
+            const age = parseInt(a[keys[4]]) || 0; // E
+            const height = parseInt(a[keys[6]]) || 0; // G
+            const weight = parseInt(a[keys[7]]) || 0; // H
+
+            if (sQ && !allText.includes(sQ)) return false;
+            
+            return (age >= fAMin && age <= fAMax) &&
+                   (height >= fHMin && height <= fHMax) &&
+                   (weight >= fWMin && weight <= fWMax);
+        });
+
+        // Сортировка: Новые -> Отобранные -> Интересные -> Остальные
+        filtered.sort((a, b) => {
+            const vA = cloudData[a._row] || "0";
+            const vB = cloudData[b._row] || "0";
+            const sA = vA.split(":")[1] || "Новая";
+            const sB = vB.split(":")[1] || "Новая";
+            const priority = {"Selected": 1, "Interesting": 2, "Новая": 3, "Main": 4, "Archive": 5, "Trash": 6};
+            const diff = (priority[sA.replace("_SENT","")] || 9) - (priority[sB.replace("_SENT","")] || 9);
+            if (diff !== 0) return diff;
+            return b._row - a._row; // Новые сверху внутри статуса
+        });
+
+        grid.innerHTML = filtered.map(a => {
+            const keys = Object.keys(a);
+            const id = a._row;
+            const val = cloudData[id] || "0";
+            const score = parseInt(val) || 0;
+            const statusRaw = val.includes(":") ? val.split(":")[1] : "Новая";
+            const status = statusRaw.replace("_SENT", "");
+            const isSent = val.includes("_SENT");
+
+            const video = a[keys[11]] || ""; // L: Видео
+            
+            // УМНЫЙ РАСЧЕТ ВОЗРАСТА (С ЗАЩИТОЙ ОТ ОШИБОК)
+            let ageVal = "?";
+            try {
+                const dobStr = a[keys[13]] || ""; // N: Дата рождения
+                const tsStr = a[keys[0]] || "";  // A: Отметка времени
+                const staticAge = a[keys[4]] || ""; // E: Возраст
+                
+                if (dobStr && String(dobStr).includes('.')) {
+                    const parts = String(dobStr).split('.');
+                    if (parts.length === 3) {
+                        const birthDate = new Date(parts[2], parts[1] - 1, parts[0]);
+                        const today = new Date();
+                        let age = today.getFullYear() - birthDate.getFullYear();
+                        const m = today.getMonth() - birthDate.getMonth();
+                        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) age--;
+                        if (age > 0 && age < 100) ageVal = age;
+                    }
+                }
+                if (ageVal === "?" && staticAge) {
+                    const year = tsStr.split('.')[2]?.split(' ')[0];
+                    if (year && year.length === 4) ageVal = `${staticAge} <span style="font-size:9px; opacity:0.6;">(${year}г)</span>`;
+                    else ageVal = staticAge;
+                }
+            } catch(e) { ageVal = a[keys[4]] || "?"; }
+
+            const heightVal = a[keys[6]] || "?"; // G
+            const weightVal = a[keys[7]] || "?"; // H
+            const name = a[keys[1]] || "Без имени"; // B
+            
+            let photosRaw = a[keys[10]] || ""; // K: Фото
+            const photoList = photosRaw.split(',').map(p => p.trim()).filter(p => p.length > 5);
+            const photo = getDirectLink(photoList[0]);
+            const otherPhotos = photoList.slice(1);
+
+            return `
+            <div class="card" id="card-${id}">
+                <div class="card-img-wrap" onclick="zoomImg('${photo}')">
+                    <img src="${photo}" class="card-img" loading="lazy">
+                    <div class="badge badge-new" style="${status === 'Archive' ? 'background:#555; color:white;' : ''}">
+                        ${status === 'Archive' ? '[АРХИВ]' : status}
+                    </div>
+                    ${score > 0 ? `<div class="badge badge-rating">★ ${score}</div>` : ''}
+                </div>
+                
+                <div class="card-body" ondblclick="showFullResume('${id}')">
+                    ${otherPhotos.length > 0 ? `
+                        <div class="thumb-strip">
+                            ${otherPhotos.map(p => {
+                                let d = getDirectLink(p);
+                                return `<img src="${d}" class="thumb" onclick="event.stopPropagation(); zoomImg('${d}')">`;
+                            }).join('')}
+                        </div>
+                    ` : ''}
+                    <div class="actor-name">${name}</div>
+                    <div class="actor-main-params">
+                        <div class="param-item"><span class="param-val">${heightVal}</span><span class="param-label">Рост</span></div>
+                        <div class="param-item"><span class="param-val">${weightVal}</span><span class="param-label">Вес</span></div>
+                        <div class="param-item"><span class="param-val">${ageVal}</span><span class="param-label">Лет</span></div>
+                    </div>
+                    
+                    <div class="actor-details">
+                        <div class="detail-row"><span class="detail-label">Пол</span><span class="detail-val">${a["Пол"]}</span></div>
+                        <div class="detail-row"><span class="detail-label">Город</span><span class="detail-val">${a["Город проживания"]||'—'}</span></div>
+                    </div>
+
+                    <div class="card-actions">
+                        <div class="action-row-main">
+                            <button class="btn btn-tg ${isSent ? 'active-status' : ''}" onclick="sendFull('${id}')">${isSent ? '✅ В ЧАТЕ' : '✈️ В ЧАТ'}</button>
+                            <button class="btn btn-video" onclick="playVideo('${video}')" title="Смотреть видео">📺 ВИДЕО</button>
+                        </div>
+                        
+                        <div class="action-row-status">
+                            <div class="rating-picker" id="picker-${id}">
+                                ${[...Array(11).keys()].map(n => `<span onclick="updateCloud('${id}', ${n}, 'Interesting')">${n}</span>`).join('')}
+                            </div>
+                            <div class="storage-picker" id="storage-${id}">
+                                <span onclick="updateCloud('${id}', ${score}, 'Archive')">📂 АРХИВ</span>
+                                <span onclick="updateCloud('${id}', ${score}, 'Trash')" style="color:var(--trash)">🗑️ ТРЭШ</span>
+                            </div>
+                            <button class="btn btn-outline ${status === 'Main' ? 'active-status' : ''}" title="Просмотрен" onclick="updateCloud('${id}', ${score}, 'Main')">👀</button>
+                            <button class="btn btn-outline ${status === 'Interesting' ? 'active-status' : ''}" title="Рейтинг" onclick="toggleRating('${id}')">⭐</button>
+                            <button class="btn btn-outline ${status === 'Selected' ? 'active-status' : ''}" title="Отобран" onclick="updateCloud('${id}', ${score}, 'Selected')">🏆</button>
+                            <button class="btn btn-outline ${status === 'Archive' || status === 'Trash' ? 'active-status' : ''}" title="В архив / Трэш" onclick="toggleStorage('${id}')">📂</button>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    function updateCloud(id, score, status) {
+        const currentVal = cloudData[id] || "0";
+        // Если переносим в Архив или Трэш - сбрасываем статус отправки в ТГ
+        let isSent = currentVal.includes("_SENT") ? "_SENT" : "";
+        if (status === "Archive" || status === "Trash") {
+            isSent = "";
+        }
+        
+        const val = score + ":" + status + isSent;
+        setCloudValue(id, val);
+        
+        // Визуальный эффект: если статус изменился и мы в специфичной вкладке - убираем карточку
+        const card = document.getElementById('card-' + id);
+        if (card && currentTab !== "all") {
+            card.style.opacity = "0";
+            card.style.transform = "scale(0.8)";
+            setTimeout(render, 300);
+        }
+    }
+
+    function playVideo(url) {
+        if (!url || url === '#') { alert("Видео не загружено"); return; }
+        let id = (url.match(/id=([^&]+)/) || url.match(/\/d\/([^/]+)/) || [])[1];
+        if (!id) { window.open(url, '_blank'); return; }
+        document.body.insertAdjacentHTML('beforeend', `<div id="vM" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);z-index:2000;display:flex;align-items:center;justify-content:center;" onclick="this.remove()"><div style="width:95%;max-width:900px;position:relative;" onclick="event.stopPropagation()"><button onclick="this.parentElement.parentElement.remove()" style="position:absolute;top:-50px;right:0;color:white;background:none;border:none;font-size:40px;cursor:pointer;">&times;</button><iframe src="https://drive.google.com/file/d/${id}/preview" width="100%" height="500" frameborder="0" allowfullscreen></iframe></div></div>`);
+    }
+
+    function toggleRating(id) {
+        const p = document.getElementById('picker-' + id);
+        const isShown = p.style.display === 'grid';
+        document.querySelectorAll('.rating-picker, .storage-picker').forEach(x => x.style.display = 'none');
+        p.style.display = isShown ? 'none' : 'grid';
+    }
+
+    function toggleStorage(id) {
+        const p = document.getElementById('storage-' + id);
+        const isShown = p.style.display === 'flex';
+        document.querySelectorAll('.rating-picker, .storage-picker').forEach(x => x.style.display = 'none');
+        p.style.display = isShown ? 'none' : 'flex';
+    }
+
+    function zoomImg(src) {
+        if (!src || src.includes('placeholder')) return;
+        document.body.insertAdjacentHTML('beforeend', `<div id="vM" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);z-index:2000;display:flex;align-items:center;justify-content:center;" onclick="this.remove()"><div style="width:90%;height:90%;display:flex;justify-content:center;align-items:center;" onclick="event.stopPropagation()"><button onclick="this.parentElement.parentElement.remove()" style="position:absolute;top:20px;right:20px;color:white;background:none;border:none;font-size:40px;cursor:pointer;z-index:2001;">&times;</button><img src="${src}" style="max-width:100%; max-height:100%; object-fit:contain; border-radius:8px; box-shadow:0 0 50px rgba(0,0,0,0.8);"></div></div>`);
+    }
+
+    function showFullResume(rowId) {
+        const a = actors.find(act => act._row == rowId);
+        if (!a) return;
+        
+        let content = `<div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">`;
+        for (let k in a) {
+            if (k === "_row" || k.toLowerCase().includes("фото") || k.toLowerCase().includes("видео")) continue;
+            if (!a[k]) continue;
+            content += `<div style="border-bottom:1px solid #333; padding:8px 0;"><span style="color:var(--muted); font-size:11px; display:block; text-transform:uppercase;">${k}</span><span style="color:white; font-size:15px; font-weight:500;">${a[k]}</span></div>`;
+        }
+        content += `</div>`;
+
+        document.body.insertAdjacentHTML('beforeend', `
+            <div id="vM" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.95);z-index:2000;display:flex;align-items:center;justify-content:center;" onclick="this.remove()">
+                <div style="width:90%; max-width:800px; max-height:90vh; background:#111218; border:1px solid var(--border); border-radius:20px; padding:30px; position:relative; overflow-y:auto; cursor:default;" onclick="event.stopPropagation()">
+                    <button onclick="this.parentElement.parentElement.remove()" style="position:absolute; top:20px; right:20px; color:var(--muted); background:none; border:none; font-size:30px; cursor:pointer;">&times;</button>
+                    <h2 style="color:white; margin-top:0; margin-bottom:20px; border-bottom:2px solid var(--accent); padding-bottom:10px;">📄 Полная анкета: ${a["ФИО (Полностью)"] || a["ФИО"]}</h2>
+                    ${content}
+                </div>
+            </div>
+        `);
+    }
+
+    async function sendFull(rowId) {
+        const confirmSend = confirm("⚠️ ВНИМАНИЕ!\n\nВы собираетесь отправить данные кандидата в ОБЩИЙ ЧАТ ГРУППЫ ПРОЕКТА.\n\nОтправить анкету?");
+        if (!confirmSend) return;
+
+        const a = actors.find(act => act._row == rowId);
+        const keys = Object.keys(a);
+        const btn = event.target; 
+        const oldText = btn.innerText;
+        btn.disabled = true; btn.innerText = "...";
+        
+        const val = cloudData[rowId] || "0";
+        const score = parseInt(val) || 0;
+        const status = (val.includes(":") ? val.split(":")[1] : "Новая").replace("_SENT", "");
+        
+        const name = a[keys[1]] || "Без имени"; 
+        const gender = a[keys[3]] || "—";
+        const age = a[keys[4]] || "—";
+        const city = a[keys[5]] || "—";
+        const height = a[keys[6]] || "—";
+        const weight = a[keys[7]] || "—";
+        const phone = a[keys[8]] || "—";
+        const type = a[keys[14]] || "—";
+        const nat = a[keys[15]] || "—";
+        const features = a[keys[17]] || "—";
+        const exp = a[keys[18]] || "—";
+        
+        // ЧИСТИМ ССЫЛКИ: Берем только ПЕРВУЮ, если их много через запятую
+        const rawPhotos = a[keys[10]] || "";
+        const firstPhoto = rawPhotos.split(',')[0].trim().replace(/%20/g, '').replace(/%2C/g, '');
+        const photoUrl = getDirectLink(firstPhoto); 
+        const videoUrl = a[keys[11]] || "#";
+
+        let cap = `<b>🎭 GULYWOOD CASTING</b>\n` +
+                  `👤 <b>${name}</b>\n\n` +
+                  `⭐ <b>Рейтинг:</b> ${score}/10\n` +
+                  `📊 <b>Статус:</b> ${status}\n\n` +
+                  `🚻 <b>Параметры:</b> ${gender}, ${age}л, ${height}см / ${weight}кг\n` +
+                  `📍 <b>Город:</b> ${city}\n` +
+                  `🌍 <b>Этнос/Тип:</b> ${nat} / ${type}\n` +
+                  `✨ <b>Приметы:</b> ${features}\n` +
+                  `🎬 <b>Опыт:</b> ${exp}\n\n` +
+                  `📱 <b>Тел:</b> ${phone}\n\n` +
+                  `<a href="${videoUrl}">📹 СМОТРЕТЬ ВИДЕО</a>`;
+        
+        if (cap.length > 1000) cap = cap.substring(0, 950) + "...";
+
+        async function post(method, body) {
+            return fetch(`https://api.telegram.org/bot${BOT_TOKEN}/${method}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+        }
+
+        try {
+            let res;
+            const hasPhoto = photoUrl && photoUrl.length > 20;
+
+            if (hasPhoto) {
+                res = await post('sendPhoto', { 
+                    chat_id: CHAT_ID, 
+                    message_thread_id: THREAD_ID,
+                    photo: photoUrl, 
+                    caption: cap, 
+                    parse_mode: 'HTML' 
+                });
+                let data = await res.json();
+                
+                if (!data.ok && (data.description || "").includes("wrong type")) {
+                    res = await post('sendMessage', { 
+                        chat_id: CHAT_ID, 
+                        message_thread_id: THREAD_ID,
+                        text: cap + `\n\n🖼 <a href="${photoUrl}">ФОТО КАНДИДАТА</a>`, 
+                        parse_mode: 'HTML', 
+                        disable_web_page_preview: false 
+                    });
+                    data = await res.json();
+                }
+                
+                if (data.ok) {
+                    updateCloud(rowId, score, status + "_SENT");
+                    btn.innerText = "В ЧАТЕ ✅";
+                    btn.classList.add('active-status');
+                } else {
+                    alert("Ошибка ТГ: " + (data.description || "Неизвестно"));
+                    btn.disabled = false; btn.innerText = oldText;
+                }
+            } else {
+                res = await post('sendMessage', { 
+                    chat_id: CHAT_ID, 
+                    message_thread_id: THREAD_ID,
+                    text: cap, 
+                    parse_mode: 'HTML' 
+                });
+                const data = await res.json();
+                if (data.ok) {
+                    updateCloud(rowId, score, status + "_SENT");
+                    btn.innerText = "В ЧАТЕ ✅";
+                    btn.classList.add('active-status');
+                } else {
+                    alert("Ошибка ТГ: " + (data.description || "Неизвестно"));
+                    btn.disabled = false; btn.innerText = oldText;
+                }
+            }
+        } catch(e) { 
+            alert("Ошибка сети"); 
+            btn.disabled = false; btn.innerText = oldText; 
+        }
+    }
+
+    // Авто-синхронизация каждые 5 минут
+    setInterval(syncAll, 5 * 60 * 1000);
+    syncAll();
+</script>
+</body>
+</html>
