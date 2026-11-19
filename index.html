@@ -1063,11 +1063,44 @@
             alert("Поиск анкет временно недоступен в версии без базы данных. Пожалуйста, заполните анкету заново.");
         };
 
+        const WEB_FORM_API = "https://script.google.com/macros/s/AKfycbz8G_EgPlaQdnoh1DEgUuLNIYYJrFE6njL5fw6HceD1hE-TKJmitnlNmd3EtQU8pH8/exec";
+        const TG_BOT_TOKEN = "8534227633:AAEqULwA8rypkF-BW87G_9ACmKWNEoGZFI4";
+        const TG_STORAGE_CHAT = "-1003893557217";
+        const DEFAULT_PROJECTS = [
+            { id: 1, name: "Лишние", chat_id: "-1003738942785", thread_id: "", category: "casting|Расул,Эльвира,Султан,Юля,Ринат,Отчим,Бабушка,Полицейский,Главная роль,Роль второго плана,Эпизод,Другое (Массовка)" },
+            { id: 2, name: "Весы", chat_id: "-1003738942785", thread_id: "", category: "casting|Главная роль,Роль второго плана,Эпизод,Другое (Массовка)" },
+            { id: 3, name: "Общая база актёров (GULYWOOD)", chat_id: "-1003738942785", thread_id: "", category: "" }
+        ];
+
+        async function makeSheetThumb(file) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.src = URL.createObjectURL(file);
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const MAX_SIZE = 360;
+                    let w = img.width, h = img.height;
+                    if (w > h) { if (w > MAX_SIZE) { h = Math.round(h * MAX_SIZE / w); w = MAX_SIZE; } }
+                    else { if (h > MAX_SIZE) { w = Math.round(w * MAX_SIZE / h); h = MAX_SIZE; } }
+                    canvas.width = w; canvas.height = h;
+                    canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                    resolve(canvas.toDataURL('image/jpeg', 0.55));
+                };
+                img.onerror = () => resolve("");
+            });
+        }
+
         async function loadCastingProjects() {
             const container = document.getElementById('castingChecklist');
             try {
-                const response = await fetch(`${'https://media.sijic13.workers.dev'}/api/casting/topics`);
-                const projects = await response.json();
+                let projects = DEFAULT_PROJECTS;
+                try {
+                    const response = await fetch(`${'https://media.sijic13.workers.dev'}/api/casting/topics`);
+                    if (response.ok) {
+                        const apiProjects = await response.json();
+                        if (Array.isArray(apiProjects) && apiProjects.length > 0) projects = apiProjects;
+                    }
+                } catch (e) {}
                 container.innerHTML = '';
                 
                 let targetProj = null;
@@ -1166,6 +1199,20 @@
                     container.appendChild(label);
                 });
                 
+                if (container.querySelectorAll('input:checked').length === 0) {
+                    const firstCb = container.querySelector('input[type="checkbox"]');
+                    if (firstCb) {
+                        firstCb.checked = true;
+                        firstCb.closest('.check-item').classList.add('active');
+                    }
+                }
+                const syncHiddenTarget = () => {
+                    const names = getSelectedProjectNames();
+                    const h = document.getElementById('casting_target_hidden');
+                    if (h) h.value = names.join(', ');
+                };
+                container.addEventListener('change', syncHiddenTarget);
+                syncHiddenTarget();
                 // Инициализация при загрузке
                 updateCharacterInput();
 
@@ -1366,27 +1413,97 @@
                 
                 if (isUpdateMode) baseFormData.set('update', 'true');
 
-                for (const p of selected) {
-                    document.getElementById('loadingText').textContent = `Отправка в ${p.name}...`;
-                    
-                    const finalFormData = new FormData();
-                    for (let [key, value] of baseFormData.entries()) {
-                        finalFormData.append(key, value);
-                    }
-                    
-                    finalFormData.set('casting_target', p.name);
-                    finalFormData.set('chat_id', p.chat_id);
-                    if (p.thread_id) finalFormData.set('thread_id', p.thread_id);
-                    
-                    uploadedPhotos.forEach(ph => finalFormData.append('photos', ph.file));
-                    if (uploadedVideoFile) finalFormData.append('video', uploadedVideoFile);
+                // 1. Генерируем компактные превью фото для Google Таблицы и дашборда casting_control.html
+                document.getElementById('loadingText').textContent = "Подготовка фотографий для базы...";
+                const thumbs = [];
+                for (const ph of uploadedPhotos.slice(0, 3)) {
+                    const t = await makeSheetThumb(ph.file);
+                    if (t && t.length < 48000) thumbs.push(t);
+                }
 
-                    const res = await fetch(`${API_BASE}`, {
+                // 2. Загружаем медиа в Telegram Campot Media Storage, чтобы сохранить оригиналы фото и видеовизитку
+                let tgVideoLink = baseFormData.get('portfolio_url') || "";
+                try {
+                    const summaryCaption = `🌟 <b>НОВАЯ АНКЕТА С САЙТА</b>\n👤 <b>${baseFormData.get('full_name') || '—'}</b>\n🎯 Проект: <b>${selected.map(s=>s.name).join(', ')}</b>\n🎭 Роль: <b>${baseFormData.get('character_name') || '—'}</b>\n📍 Город: ${baseFormData.get('city')} | ${baseFormData.get('gender')} | ${baseFormData.get('dob')} лет\n📏 ${height} см / ${weight} кг | 👕 ${clothSize} / 👟 ${shoeSize}\n📱 Тел: ${baseFormData.get('phone')}\n🔗 ${instagram} | ${emailTg}`;
+                    if (uploadedPhotos.length > 0) {
+                        const mg = new FormData();
+                        mg.append("chat_id", TG_STORAGE_CHAT);
+                        const mediaArr = uploadedPhotos.slice(0, 10).map((ph, idx) => {
+                            const fid = "p" + idx;
+                            mg.append(fid, ph.file, ph.file.name || (`photo_${idx}.jpg`));
+                            return {
+                                type: "photo",
+                                media: `attach://${fid}`,
+                                ...(idx === 0 ? { caption: summaryCaption, parse_mode: "HTML" } : {})
+                            };
+                        });
+                        mg.append("media", JSON.stringify(mediaArr));
+                        await fetch(`https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMediaGroup`, { method: "POST", body: mg });
+                    }
+                    if (uploadedVideoFile && uploadedVideoFile.size <= 49 * 1024 * 1024) {
+                        document.getElementById('loadingText').textContent = "Загрузка видео-визитки...";
+                        const vf = new FormData();
+                        vf.append("chat_id", TG_STORAGE_CHAT);
+                        vf.append("video", uploadedVideoFile, uploadedVideoFile.name || "casting_video.mp4");
+                        vf.append("caption", `🎬 Видео-визитка: ${baseFormData.get('full_name') || ''}`);
+                        const vr = await fetch(`https://api.telegram.org/bot${TG_BOT_TOKEN}/sendVideo`, { method: "POST", body: vf });
+                        const vj = await vr.json();
+                        if (vj && vj.ok && vj.result && vj.result.message_id) {
+                            const tgLink = `https://t.me/c/3893557217/${vj.result.message_id}`;
+                            tgVideoLink = tgVideoLink ? `${tgVideoLink} , ${tgLink}` : tgLink;
+                        }
+                    }
+                } catch (tgErr) {
+                    console.warn("Telegram storage warning:", tgErr);
+                }
+
+                // 3. Сохраняем анкету напрямую в Google Таблицу (синхронизировано с casting_control.html)
+                const rawGen = baseFormData.get('gender') || "";
+                const normGen = rawGen === "Мужчина" ? "Мужской" : (rawGen === "Женщина" ? "Женский" : rawGen);
+                const nowStr = new Date().toLocaleString("ru-RU");
+                const formatsArr = [];
+                if (baseFormData.get('extras_ok') === 'Да') formatsArr.push('Массовка / Эпизоды');
+                if (baseFormData.get('underwear_ok') && baseFormData.get('underwear_ok') !== 'Нет') formatsArr.push(`Белье/купальник: ${baseFormData.get('underwear_ok')}`);
+
+                for (const p of selected) {
+                    document.getElementById('loadingText').textContent = `Сохранение в базу Google Sheets (${p.name})...`;
+                    const metaObj = {
+                        ts: nowStr,
+                        project: p.name,
+                        role: baseFormData.get('character_name') || "",
+                        gender: normGen,
+                        age: baseFormData.get('dob') || "",
+                        city: baseFormData.get('city') || "",
+                        height: String(height),
+                        weight: String(weight),
+                        phone: baseFormData.get('phone') || "",
+                        experience: `${baseFormData.get('experience') || ''}${baseFormData.get('skills') ? ' | Навыки: ' + baseFormData.get('skills') : ''}${baseFormData.get('portfolio_url') ? ' | Портфолио: ' + baseFormData.get('portfolio_url') : ''} | Гонорар: ${feeFrom}-${feeTo} ₸`.trim(),
+                        video: tgVideoLink,
+                        type: appType,
+                        nat: appType,
+                        contact: `Inst: ${instagram} | TG/Email: ${emailTg}`,
+                        features: `${features || ''}${diseases ? ' | Здоровье: ' + diseases : ''}`.trim() || "—",
+                        appearance_details: `Волосы: ${hairColor} | Глаза/детали: ${appDetails} | Одежда: ${clothSize}, Обувь: ${shoeSize}`,
+                        formats: formatsArr.join(", ") || "Основные роли",
+                        email: emailTg
+                    };
+                    const sheetPayload = {
+                        full_name: baseFormData.get('full_name') || "",
+                        project_name: p.name,
+                        city: JSON.stringify(metaObj),
+                        gender: thumbs[0] || "",
+                        age: thumbs[1] || "",
+                        height: thumbs[2] || "",
+                        weight: `${height} см / ${weight} кг`,
+                        phone: baseFormData.get('phone') || "",
+                        experience: metaObj.experience
+                    };
+                    await fetch(WEB_FORM_API, {
                         method: 'POST',
-                        body: finalFormData
+                        mode: 'no-cors',
+                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                        body: JSON.stringify(sheetPayload)
                     });
-                    
-                    if (!res.ok) throw new Error(await res.text());
                 }
                 
                 document.getElementById('formContainer').style.display = 'none';
